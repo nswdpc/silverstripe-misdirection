@@ -9,12 +9,14 @@ use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\TextField;
+use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\ValidationResult;
 
 /**
- *	This extension provides vanity mapping directly from a page, and automatically creates the appropriate link mappings when replacing the default automated URL handling.
- *	@author Nathan Glasl <nathan@symbiote.com.au>
+ * This extension provides vanity mapping directly from a page, and automatically creates the appropriate link mappings when replacing the default automated URL handling.
+ * @todo move this to a separate CMS module that requires this core modul
+ * @author Nathan Glasl <nathan@symbiote.com.au>
  * @property int $VanityMappingID
  * @method \nglasl\misdirection\LinkMapping VanityMapping()
  * @extends \SilverStripe\ORM\DataExtension<static>
@@ -24,158 +26,156 @@ class SiteTreeMisdirectionExtension extends DataExtension
     /**
      *	This provides link mapping customisation directly from a page.
      */
-
     private static array $has_one = [
         'VanityMapping' => LinkMapping::class
     ];
 
     public function updateSettingsFields($fields)
     {
+        /** @var \SilverStripe\CMS\Model\SiteTree $page */
+        $page = $this->getOwner();
+        $vanityMapping = $page->VanityMapping();
+        if($vanityMapping && $vanityMapping->isInDB()) {
 
-        $fields->addFieldToTab('Root.Misdirection', HeaderField::create(
-            'VanityHeader',
-            'Vanity'
-        ));
-        if ($this->getOwner()->VanityMapping()->RedirectPageID != $this->getOwner()->ID) {
+            $fields->addFieldToTab(
+                'Root.Misdirection',
+                HeaderField::create(
+                    'VanityHeader',
+                    'Vanity'
+                )
+            );
 
-            // The mapping may have been pointed to another page.
+            if (($page instanceof SiteTree) && $vanityMapping->RedirectPageID != $page->ID) {
+                // The mapping may have been pointed to another page.
+                $page->VanityMappingID = 0;
+            }
 
-            $this->getOwner()->VanityMappingID = 0;
+            $fields->addFieldToTab(
+                'Root.Misdirection',
+                TextField::create(
+                    'VanityURL',
+                    'URL',
+                    $vanityMapping->MappedLink
+                )->setDescription(
+                    'Mappings with higher priority will take precedence over this'
+                )
+            );
+
         }
 
-        $fields->addFieldToTab('Root.Misdirection', TextField::create(
-            'VanityURL',
-            'URL',
-            $this->getOwner()->VanityMapping()->MappedLink
-        )->setDescription('Mappings with higher priority will take precedence over this'));
-
         // Allow extension customisation.
-
-        $this->getOwner()->extend('updateSiteTreeMisdirectionExtensionSettingsFields', $fields);
+        $page->extend('updateSiteTreeMisdirectionExtensionSettingsFields', $fields);
     }
 
     public function validate(ValidationResult $result)
     {
 
-        // Retrieve the vanity mapping URL, where this is only possible using the POST variable.
+        /** @var \SilverStripe\CMS\Model\SiteTree $page */
+        $page = $this->getOwner();
+        $vanityMapping = $page->VanityMapping();
 
-        $vanityURL = (!Controller::has_curr() || is_null($controller = Controller::curr()) || is_null($URL = $controller->getRequest()->postVar('VanityURL'))) ? $this->getOwner()->VanityMapping()->MappedLink : $URL;
-        if (!$vanityURL) {
+        // Retrieve the vanity mapping URL, where this is only possible using the POST variable.
+        $controller = Controller::curr();
+        $url = $controller ? $controller->getRequest()->postVar('VanityURL') : null;
+        if(!$url) {
+            $url = $vanityMapping->MappedLink;
+        }
+
+        if (!$url) {
             return $result;
         }
 
         // Determine whether another vanity mapping already exists.
-
         $existing = LinkMapping::get()->filter([
-            'MappedLink' => $vanityURL,
+            'MappedLink' => $url,
             'RedirectType' => 'Page',
-            'RedirectPageID:not' => [
-                0,
-                $this->getOwner()->ID
-            ]
+            'RedirectPageID:not' => [ 0, $page->ID ]
         ])->first();
+
         if (class_exists(SiteTree::class) && class_exists(CMSPageSettingsController::class) && $result->isValid() && $existing && ($page = $existing->getRedirectPage())) {
             $link = Controller::join_links(CMSPageSettingsController::singleton()->Link('show'), $page->ID);
-            $result->addError("Vanity URL <a href='{$link}' target='_blank'>already exists</a>!", ValidationResult::TYPE_ERROR, null, ValidationResult::CAST_HTML);
+            $result->addError("Vanity URL {$link}' already exists", ValidationResult::TYPE_ERROR);
         }
 
         // Allow extension.
-
-        $this->getOwner()->extend('validateSiteTreeMisdirectionExtension', $result);
+        $page->extend('validateSiteTreeMisdirectionExtension', $result);
         return $result;
     }
 
     /**
-     *	Update the corresponding vanity mapping.
+     *Update the corresponding vanity mapping.
      */
-
     public function onBeforeWrite()
     {
 
-        parent::onBeforeWrite();
+        /** @var \SilverStripe\CMS\Model\SiteTree $page */
+        $page = $this->getOwner();
+        $vanityMapping = $page->VanityMapping();
 
         // Retrieve the vanity mapping URL, where this is only possible using the POST variable.
-
-        $vanityURL = (!Controller::has_curr() || is_null($controller = Controller::curr()) || is_null($URL = $controller->getRequest()->postVar('VanityURL'))) ? $this->getOwner()->VanityMapping()->MappedLink : $URL;
-        $mappingExists = $this->getOwner()->VanityMapping()->exists();
+        $controller = Controller::curr();
+        $url = $controller ? $controller->getRequest()->postVar('VanityURL') : null;
+        if(!$url) {
+            $url = $vanityMapping->MappedLink;
+        }
+        $mappingExists = $vanityMapping->isInDB();
 
         // Determine whether the vanity mapping URL has been updated.
-
-        if ($vanityURL && $mappingExists) {
-            if ($this->getOwner()->VanityMapping()->MappedLink !== $vanityURL) {
-
+        if ($url && $mappingExists) {
+            if ($vanityMapping->MappedLink !== $url) {
                 // Update the corresponding vanity mapping.
-
-                $this->getOwner()->VanityMapping()->MappedLink = $vanityURL;
-                $this->getOwner()->VanityMapping()->write();
+                $vanityMapping->MappedLink = $url;
+                $vanityMapping->write();
             }
-        }
-
-        // Determine whether the vanity mapping URL has been defined.
-
-        elseif ($vanityURL) {
-
+        } elseif ($url) {
+            // Determine whether the vanity mapping URL has been defined.
             // Instantiate the vanity mapping.
-
-            $mapping = singleton(MisdirectionService::class)->createPageMapping($vanityURL, $this->getOwner()->ID, 2);
-            $this->getOwner()->VanityMappingID = $mapping->ID;
-        }
-
-        // Determine whether the vanity mapping URL has been removed.
-
-        elseif ($mappingExists) {
-
+            $mapping = singleton(MisdirectionService::class)->createPageMapping($url, $page->ID, 2);
+            $page->VanityMappingID = $mapping->ID;
+        } elseif ($mappingExists) {
+            // Determine whether the vanity mapping URL has been removed.
             // Remove the corresponding vanity mapping.
-
-            $this->getOwner()->VanityMapping()->delete();
+            $vanityMapping->delete();
         }
     }
 
     /**
      *	Update link mappings when replacing the default automated URL handling.
      */
-
     public function onAfterWrite()
     {
 
-        parent::onAfterWrite();
-
         // Determine whether the default automated URL handling has been replaced.
-
         if (class_exists(SiteTree::class) && Config::inst()->get(MisDirectionRequestProcessor::class, 'replace_default')) {
 
-            // Determine whether the URL segment or parent ID has been updated.
+            /** @var \SilverStripe\CMS\Model\SiteTree $page */
+            $page = $this->getOwner();
 
-            $changed = $this->getOwner()->getChangedFields();
+            // Determine whether the URL segment or parent ID has been updated.
+            $changed = $page->getChangedFields();
             if ((isset($changed['URLSegment']['before']) && isset($changed['URLSegment']['after']) && ($changed['URLSegment']['before'] != $changed['URLSegment']['after'])) || (isset($changed['ParentID']['before']) && isset($changed['ParentID']['after']) && ($changed['ParentID']['before'] != $changed['ParentID']['after']))) {
 
                 // The link mappings should only be created for existing pages.
-
-                $URL = ($changed['URLSegment']['before'] ?? $this->getOwner()->URLSegment);
-                if (!str_starts_with((string) $URL, 'new-')) {
-
+                $url = ($changed['URLSegment']['before'] ?? $page->URLSegment);
+                if (!str_starts_with((string) $url, 'new-')) {
                     // Determine the page URL.
-
-                    $parentID = ($changed['ParentID']['before'] ?? $this->getOwner()->ParentID);
+                    $parentID = ($changed['ParentID']['before'] ?? $page->ParentID);
                     $parent = SiteTree::get_one(SiteTree::class, "SiteTree.ID = {$parentID}");
                     while ($parent) {
-                        $URL = Controller::join_links($parent->URLSegment, $URL);
+                        $url = Controller::join_links($parent->URLSegment, $url);
                         $parent = SiteTree::get_one(SiteTree::class, "SiteTree.ID = {$parent->ParentID}");
                     }
 
                     // Instantiate a link mapping for this page.
-
-                    singleton(MisdirectionService::class)->createPageMapping($URL, $this->getOwner()->ID);
+                    singleton(MisdirectionService::class)->createPageMapping($url, $page->ID);
 
                     // Purge any link mappings that point back to the same page.
-
-                    $this->getOwner()->regulateMappings(($this->getOwner()->Link() === Director::baseURL()) ? Controller::join_links(Director::baseURL(), 'home/') : $this->getOwner()->Link(), $this->getOwner()->ID);
+                    $page->regulateMappings(($page->Link() === Director::baseURL()) ? Controller::join_links(Director::baseURL(), MisdirectionService::getHomeSegment()) : $page->Link(), $page->ID);
 
                     // Recursively create link mappings for any children.
-
-                    $children = $this->getOwner()->AllChildrenIncludingDeleted();
+                    $children = $page->AllChildrenIncludingDeleted();
                     if ($children->count()) {
-                        $this->getOwner()->recursiveMapping($URL, $children);
+                        $page->recursiveMapping($url, $children);
                     }
                 }
             }
@@ -185,25 +185,23 @@ class SiteTreeMisdirectionExtension extends DataExtension
     /**
      *	Determine whether link mappings need to be updated when removing this page.
      */
-
     public function onAfterDelete()
     {
 
-        parent::onAfterDelete();
+        /** @var \SilverStripe\CMS\Model\SiteTree $page */
+        $page = $this->getOwner();
 
         // Determine whether this page has been completely removed.
-
-        if (Config::inst()->get(MisDirectionRequestProcessor::class, 'replace_default') && !$this->getOwner()->isPublished() && !$this->getOwner()->isOnDraft()) {
+        if (Config::inst()->get(MisDirectionRequestProcessor::class, 'replace_default') && !$page->isPublished() && !$page->isOnDraft()) {
 
             // Convert any link mappings that are directly associated with this page.
-
             $mappings = LinkMapping::get()->filter([
                 'RedirectType' => 'Page',
-                'RedirectPageID' => $this->getOwner()->ID
+                'RedirectPageID' => $page->ID
             ]);
             foreach ($mappings as $mapping) {
                 $mapping->RedirectType = 'Link';
-                $mapping->RedirectLink = Director::makeRelative(($this->getOwner()->Link() === Director::baseURL()) ? Controller::join_links(Director::baseURL(), 'home/') : $this->getOwner()->Link());
+                $mapping->RedirectLink = Director::makeRelative(($page->Link() === Director::baseURL()) ? Controller::join_links(Director::baseURL(), MisdirectionService::getHomeSegment()) : $page->Link());
                 $mapping->write();
             }
         }
@@ -212,11 +210,10 @@ class SiteTreeMisdirectionExtension extends DataExtension
     /**
      *	Purge any link mappings that point back to the same page.
      *
-     *	@parameter <{PAGE_URL}> string
-     *	@parameter <{PAGE_ID}> integer
+     *	@param string $pageLink
+     *	@param int $pageID
      */
-
-    public function regulateMappings($pageLink, $pageID)
+    public function regulateMappings(string $pageLink, int $pageID)
     {
 
         LinkMapping::get()->filter([
@@ -229,29 +226,26 @@ class SiteTreeMisdirectionExtension extends DataExtension
     /**
      *	Recursively create link mappings for any children.
      *
-     *	@parameter <{BASE_URL}> string
-     *	@parameter <{PAGE_CHILDREN}> array(site tree)
+     *	@param string $baseURL
+     *	@param ArrayList $children
      */
 
-    public function recursiveMapping($baseURL, $children)
+    public function recursiveMapping(string $baseURL, ArrayList $children)
     {
 
         foreach ($children as $child) {
 
             // Instantiate a link mapping for this page.
-
-            $URL = Controller::join_links($baseURL, $child->URLSegment);
-            singleton(MisdirectionService::class)->createPageMapping($URL, $child->ID);
+            $url = Controller::join_links($baseURL, $child->URLSegment);
+            singleton(MisdirectionService::class)->createPageMapping($url, $child->ID);
 
             // Purge any link mappings that point back to the same page.
-
-            $this->getOwner()->regulateMappings(($child->Link() === Director::baseURL()) ? Controller::join_links(Director::baseURL(), 'home/') : $child->Link(), $child->ID);
+            $this->getOwner()->regulateMappings(($child->Link() === Director::baseURL()) ? Controller::join_links(Director::baseURL(), MisdirectionService::getHomeSegment()) : $child->Link(), $child->ID);
 
             // Recursively create link mappings for any children.
-
             $recursiveChildren = $child->AllChildrenIncludingDeleted();
             if ($recursiveChildren->count()) {
-                $this->getOwner()->recursiveMapping($URL, $recursiveChildren);
+                $this->getOwner()->recursiveMapping($url, $recursiveChildren);
             }
         }
     }

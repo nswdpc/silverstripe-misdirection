@@ -8,7 +8,7 @@ use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldSortableHeader;
 
 /**
- *	@author Nathan Glasl <nathan@symbiote.com.au>
+ * @author Nathan Glasl <nathan@symbiote.com.au>
  * @mixin \nglasl\misdirection\MisdirectionAdminTestingExtension
  */
 class MisdirectionAdmin extends ModelAdmin
@@ -43,7 +43,6 @@ class MisdirectionAdmin extends ModelAdmin
         }
 
         // Allow extension customisation.
-
         $this->extend('updateMisdirectionAdminEditForm', $form);
         return $form;
     }

@@ -1,6 +1,0 @@
----
-Name: misdirection-upgrade
----
-SilverStripe\ORM\DatabaseAdmin:
-  classname_value_remapping:
-    LinkMapping: 'nglasl\misdirection\LinkMapping'
