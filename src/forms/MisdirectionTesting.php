@@ -20,11 +20,11 @@ class MisdirectionTesting implements GridField_HTMLProvider
     {
         return [
             'before' => '<div class="misdirection-testing admin">
-				<div><strong>Test Link Mappings</strong></div>
+				<div><strong>' . htmlspecialchars(_t(self::class . '.TEST_LINK_MAPPING', 'Test a redirect')) . '</strong></div>
 				<div class="wrapper">
 					<input type="text" class="text w-50 url" spellcheck="false"/>
 					<span role="button" class="btn btn-notice font-icon-switch test disabled" tabindex="0">
-						<span class="btn__title">Test URL</span>
+						<span class="btn__title">' . htmlspecialchars(_t(self::class . '.TEST_LINK_MAPPING_BUTTON_TEXT', 'Test')) . '</span>
 					</span>
 				</div>
 				<div class="results"></div>

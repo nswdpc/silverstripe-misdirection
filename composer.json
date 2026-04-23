@@ -22,6 +22,7 @@
         }
     ],
     "require": {
+        "codem/silverstripe-html5-inputs": "^1",
         "silverstripe/framework": "^5.4",
         "silverstripe/admin": "^2"
     },

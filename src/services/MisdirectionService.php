@@ -34,6 +34,7 @@ class MisdirectionService
 
     /**
      *	Use third party validation to determine an external URL (https://gist.github.com/dperini/729294 and http://mathiasbynens.be/demo/url-regex).
+     * @todo is this required?
      */
     public static function is_external_URL(string $URL): int|false
     {
@@ -106,12 +107,17 @@ class MisdirectionService
         $filtered->merge($matches);
         $matches = $filtered;
 
+        // ensure valid sort direction
+        $idPriority = Config::inst()->get(LinkMapping::class, 'priority');
+        if($idPriority !== "ASC") {
+            $idPriority = "DESC";
+        }
         // Make sure the link mappings are ordered by priority and specificity.
         $matches = $matches->sort([
             'Priority' => 'DESC',
-            'LinkType' => 'DESC',
+            'LinkType' => 'DESC',// Simple before Regular Expression
             'MappedLink' => 'DESC',
-            'ID' => Config::inst()->get(LinkMapping::class, 'priority')
+            'ID' => $idPriority
         ]);
 
         // Determine which link mapping should be returned, based on the sort order.

@@ -2,16 +2,19 @@
 
 namespace nglasl\misdirection;
 
+use Codem\Utilities\HTML5\UrlField;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTP;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\CheckboxField;
+use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldGroup;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\SelectionGroup;
+use SilverStripe\Forms\SelectionGroup_Item;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\TreeDropdownField;
 use SilverStripe\ORM\DataObject;
@@ -35,6 +38,10 @@ use Symbiote\Multisites\Multisites;
 class LinkMapping extends DataObject
 {
     private static string $table_name = 'LinkMapping';
+
+    private static string $singular_name = 'Redirect record';
+
+    private static string $plural_name = 'Redirect records';
 
     /**
      *	Manually define the redirect page relationship when the CMS module is not present.
@@ -78,20 +85,24 @@ class LinkMapping extends DataObject
         'MappedLink',
         'LinkType',
         'Priority',
-        'RedirectType'
+        'RedirectType',
+        'IncludesHostname'
     ];
 
     private static array $summary_fields = [
         'MappedLink',
         'LinkSummary',
+        'IncludesHostname',
         'Priority',
         'RedirectTypeSummary',
         'RedirectPageTitle'
     ];
 
     private static array $field_labels = [
-        'MappedLink' => 'Mapping',
+        'MappedLink' => 'Source link',
         'LinkSummary' => 'Redirection',
+        'Priority' => 'Link priority',
+        'IncludesHostname' => 'Includes domain?',
         'RedirectTypeSummary' => 'Redirect Type',
         'RedirectPageTitle' => 'Redirect Page Title'
     ];
@@ -163,64 +174,77 @@ class LinkMapping extends DataObject
         Requirements::css('nglasl/silverstripe-misdirection: client/css/misdirection.css');
 
         // Remove any fields that are not required in their default state.
-        $fields->removeByName('MappedLink');
-        $fields->removeByName('IncludesHostname');
-        $fields->removeByName('Priority');
-        $fields->removeByName('RedirectType');
-        $fields->removeByName('RedirectLink');
-        $fields->removeByName('RedirectPageID');
-        $fields->removeByName('ResponseCode');
-        $fields->removeByName('HostnameRestriction');
+        $fields->removeByName([
+            'MappedLink',
+            'IncludesHostname',
+            'Priority',
+            'RedirectType',
+            'RedirectLink',
+            'RedirectPageID',
+            'ResponseCode',
+            'HostnameRestriction'
+        ]);
 
         // Update any fields that are displayed.
-        $fields->dataFieldByName('LinkType')->addExtraClass('link-type')->setTitle('Type');
+        $linkTypeField = $fields->dataFieldByName('LinkType');
+        if($linkTypeField) {
+            $linkTypeField->addExtraClass('link-type')
+                ->setTitle(_t(self::class . '.TYPE_OF_LINK', 'Type of redirect'));
+        }
 
         // Instantiate the required fields.
-        $fields->insertBefore(
-            'LinkType',
-            HeaderField::create(
-                'MappedLinkHeader',
-                'Mapping',
-                3
-            )
+        $linkCompositeField = CompositeField::create()
+            ->setTitle(_t(self::class . '.SOURCE_OF_REDIRECT', 'The source of the redirect'));
+        $fields->addFieldToTab(
+            'Root.Main',
+            $linkCompositeField
         );
 
         // Retrieve the mapped link configuration as a single grouping.
-        $URL = FieldGroup::create(
+        $linkCompositeField->push(
             TextField::create(
                 'MappedLink',
-                ''
-            )->addExtraClass('mapped-link')->setDescription('This should <strong>not</strong> include the <strong>HTTP/S</strong> scheme'),
+                _t(self::class . '.MAPPED_LINK_TITLE', 'Link')
+            )->addExtraClass('mapped-link')
+                ->setDescription(
+                    htmlspecialchars(_t(self::class . '.MAPPED_LINK_DESCRIPTION', "Add a path, e.g. 'the-page'. If a domain is required in the redirect, add the domain and the path, e.g. 'example.com/the-page"))
+            )
+        );
+        $linkCompositeField->push(
             CheckboxField::create(
                 'IncludesHostname',
-                'Includes Hostname?'
+                _t(self::class . '.INCLUDE_HOSTNAME', 'Includes domain?')
+            )->setDescription(
+                htmlspecialchars(_t(self::class . '.INCLUDE_HOSTNAME_DESCRIPTION', "Select if the link includes a domain e.g 'example.com' before the link path. Use this option if you want to redirect on a specific domain."))
             )
-        )->setTitle('URL');
-        $fields->addFieldToTab('Root.Main', $URL);
+        );
 
         // Generate the 1 - 10 priority selection.
+        $maxPriority = 10;
         $range = [];
-        for ($iteration = 1; $iteration <= 10; $iteration++) {
-            $range[$iteration] = $iteration;
+        for ($iteration =  $maxPriority; $iteration > 0; $iteration--) {
+            $range[$iteration] = (string) $iteration;
         }
 
-        $fields->addFieldToTab('Root.Main', DropdownField::create(
-            'Priority',
-            null,
-            $range
-        ));
+        $linkCompositeField->push(
+            DropdownField::create(
+                'Priority',
+                _t(self::class . '.REDIRECTION_PRIORITY', 'Priority'),
+                $range
+            )->setDescription(
+                _t(self::class . '.HIGHEST_PRIORITY', 'Higher priority links will be preferred')
+            )
+        );
 
         // Retrieve the redirection configuration as a single grouping.
-        $fields->addFieldToTab('Root.Main', HeaderField::create(
-            'RedirectionHeader',
-            'Redirection',
-            3
-        ));
-        $redirect = FieldGroup::create();
-        $redirect->push(TextField::create(
-            'RedirectLink',
-            ''
-        )->addExtraClass('redirect-link')->setDescription('This requires the <strong>HTTP/S</strong> scheme for an external URL'));
+        $targetCompositeField = CompositeField::create()
+            ->setTitle(_t(self::class . '.TARGET_OF_REDIRECT', 'The target of the redirect'));
+
+        $redirectLinkField = UrlField::create(
+                'RedirectLink',
+                _t(self::class . '.TARGET_OF_REDIRECT_LINK', 'The website address')
+            )->addExtraClass('redirect-link')
+            ->restrictToHttp();// validation
 
         // Allow redirect page configuration when the CMS module is present.
         if (class_exists(SiteTree::class)) {
@@ -231,30 +255,37 @@ class LinkMapping extends DataObject
                 $this->RedirectType = 'Link';
             }
 
-            $fields->addFieldToTab('Root.Main', SelectionGroup::create(
-                'RedirectType',
-                [
-                    'Link//To URL' => $redirect,
-                    'Page//To Page' => TreeDropdownField::create(
-                        'RedirectPageID',
-                        '',
-                        SiteTree::class
-                    )
-                ]
-            ));
+            $targetCompositeField->push(
+                SelectionGroup::create(
+                    'RedirectType',
+                    [
+                        SelectionGroup_Item::create(
+                            'Link',
+                            $redirectLinkField,
+                            _t(self::class . '.TO_URL', 'An external web page on another website')
+                        ),
+                        SelectionGroup_Item::create(
+                            'Page',
+                            TreeDropdownField::create(
+                                'RedirectPageID',
+                                '',
+                                SiteTree::class
+                            ),
+                            _t(self::class . '.TO_PAGE', 'A page on this website')
+                        )
+                    ]
+                )
+            );
         } else {
-            $redirect->setTitle('To URL');
-            $fields->addFieldToTab('Root.Main', $redirect);
+            // External links only
+            $targetCompositeField->push($redirectLinkField);
+            $targetCompositeField->push($validateExternalField);
         }
 
-        // Use third party validation against an external URL.
-        if ($this->canEdit()) {
-            Requirements::javascript('nglasl/silverstripe-misdirection: client/javascript/misdirection-link-mapping.js');
-            $redirect->push(CheckboxField::create(
-                'ValidateExternal',
-                'Validate External URL?'
-            )->addExtraClass('validate-external'));
-        }
+        $fields->addFieldToTab(
+            'Root.Main',
+            $targetCompositeField
+        );
 
         // Retrieve the response code selection.
         $responses = Config::inst()->get(MisDirectionRequestProcessor::class, 'status_codes');
@@ -265,11 +296,15 @@ class LinkMapping extends DataObject
             }
         }
 
-        $fields->addFieldToTab('Root.Main', DropdownField::create(
-            'ResponseCode',
-            'Response Code',
-            $selection
-        ));
+        $linkCompositeField->push(
+            DropdownField::create(
+                'ResponseCode',
+                _t(self::class . '.RESPONSE_CODE', 'Redirect code'),
+                $selection
+            )->setDescription(
+                htmlspecialchars(_t(self::class . '.RESPONSE_CODE_DESCRIPTION', "This provides helpful information to browsers and search engines about the reason for the redirect. Use the default '301' if unsure."))
+            )
+        );
 
         // The optional hostname restriction is now deprecated.
         if ($this->HostnameRestriction) {
@@ -296,9 +331,6 @@ class LinkMapping extends DataObject
             && (is_null($this->MappedLink) || @preg_match("%" . preg_quote((string)$this->MappedLink, "%") . "%", '') === false)
         ) {
             $result->addError('Invalid regular expression!');
-        } elseif ($result->isValid() && $this->ValidateExternal && $this->RedirectLink && !MisdirectionService::is_external_URL($this->RedirectLink)) {
-            // Use third party validation to determine an external URL (https://gist.github.com/dperini/729294 and http://mathiasbynens.be/demo/url-regex).
-            $result->addError('External URL validation failed!');
         }
 
         // Allow extension customisation.

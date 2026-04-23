@@ -15,9 +15,9 @@ class MisdirectionAdmin extends ModelAdmin
 {
     private static string $managed_models = LinkMapping::class;
 
-    private static string $menu_title = 'Misdirection';
+    private static string $menu_title = 'Redirections';
 
-    private static string $menu_description = 'Create, manage and test customisable link redirection mappings.';
+    private static string $menu_description = 'Create, manage and test customisable redirects.';
 
     private static string $menu_icon_class = 'font-icon-switch';
 
