@@ -109,7 +109,7 @@ class MisdirectionService
 
         // ensure valid sort direction
         $idPriority = Config::inst()->get(LinkMapping::class, 'priority');
-        if($idPriority !== "ASC") {
+        if ($idPriority !== "ASC") {
             $idPriority = "DESC";
         }
 

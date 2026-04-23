@@ -11,8 +11,6 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\DropdownField;
-use SilverStripe\Forms\FieldGroup;
-use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\SelectionGroup;
 use SilverStripe\Forms\SelectionGroup_Item;
 use SilverStripe\Forms\TextField;
@@ -187,7 +185,7 @@ class LinkMapping extends DataObject
 
         // Update any fields that are displayed.
         $linkTypeField = $fields->dataFieldByName('LinkType');
-        if($linkTypeField) {
+        if ($linkTypeField) {
             $linkTypeField->addExtraClass('link-type')
                 ->setTitle(_t(self::class . '.TYPE_OF_LINK', 'Type of redirect'));
         }
@@ -208,7 +206,7 @@ class LinkMapping extends DataObject
             )->addExtraClass('mapped-link')
                 ->setDescription(
                     htmlspecialchars(_t(self::class . '.MAPPED_LINK_DESCRIPTION', "Add a path, e.g. 'the-page'. If a domain is required in the redirect, add the domain and the path, e.g. 'example.com/the-page"))
-            )
+                )
         );
         $linkCompositeField->push(
             CheckboxField::create(
@@ -241,9 +239,9 @@ class LinkMapping extends DataObject
             ->setTitle(_t(self::class . '.TARGET_OF_REDIRECT', 'The target of the redirect'));
 
         $redirectLinkField = UrlField::create(
-                'RedirectLink',
-                _t(self::class . '.TARGET_OF_REDIRECT_LINK', 'The website address')
-            )->addExtraClass('redirect-link')
+            'RedirectLink',
+            _t(self::class . '.TARGET_OF_REDIRECT_LINK', 'The website address')
+        )->addExtraClass('redirect-link')
             ->restrictToHttp();// validation
 
         // Allow redirect page configuration when the CMS module is present.
