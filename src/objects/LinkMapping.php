@@ -277,7 +277,6 @@ class LinkMapping extends DataObject
         } else {
             // External links only
             $targetCompositeField->push($redirectLinkField);
-            $targetCompositeField->push($validateExternalField);
         }
 
         $fields->addFieldToTab(
