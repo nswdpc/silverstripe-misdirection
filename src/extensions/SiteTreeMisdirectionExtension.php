@@ -10,21 +10,21 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\DataExtension;
+use SilverStripe\Core\Extension;
 use SilverStripe\ORM\ValidationResult;
 
 /**
  * This extension provides vanity mapping directly from a page, and automatically creates the appropriate link mappings when replacing the default automated URL handling.
- * @todo move this to a separate CMS module that requires this core modul
+ * @todo move this to a separate CMS module that requires this core module?
  * @author Nathan Glasl <nathan@symbiote.com.au>
  * @property int $VanityMappingID
  * @method \nglasl\misdirection\LinkMapping VanityMapping()
- * @extends \SilverStripe\ORM\DataExtension<static>
+ * @extends \SilverStripe\Core\Extension<static>
  */
-class SiteTreeMisdirectionExtension extends DataExtension
+class SiteTreeMisdirectionExtension extends Extension
 {
     /**
-     *	This provides link mapping customisation directly from a page.
+     * This provides link mapping customisation directly from a page.
      */
     private static array $has_one = [
         'VanityMapping' => LinkMapping::class

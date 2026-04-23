@@ -8,7 +8,7 @@ use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\DataExtension;
+use SilverStripe\Core\Extension;
 use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\View\Requirements;
 
@@ -18,9 +18,9 @@ use SilverStripe\View\Requirements;
  * @property ?string $Fallback
  * @property ?string $FallbackLink
  * @property int $FallbackResponseCode
- * @extends \SilverStripe\ORM\DataExtension<static>
+ * @extends \SilverStripe\Core\Extension<static>
  */
-class MisdirectionFallbackExtension extends DataExtension
+class MisdirectionFallbackExtension extends Extension
 {
     private static array $db = [
         'Fallback' => 'Varchar(255)',
