@@ -68,8 +68,3 @@ div.misdirection-testing.admin div.result:nth-child(5n+1) {
 div.misdirection-testing.admin div.result div.h3 {
 	text-decoration: underline;
 }
-
-div.mapped-link,
-div.redirect-link {
-	width: 50%;
-}

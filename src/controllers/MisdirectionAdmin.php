@@ -4,42 +4,45 @@ namespace nglasl\misdirection;
 
 use SilverStripe\Admin\ModelAdmin;
 use SilverStripe\Control\HTTPRequest;
+use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldSortableHeader;
-use SilverStripe\Security\Permission;
 
 /**
- *	@author Nathan Glasl <nathan@symbiote.com.au>
+ * @author Nathan Glasl <nathan@symbiote.com.au>
+ * @mixin \nglasl\misdirection\MisdirectionAdminTestingExtension
  */
 class MisdirectionAdmin extends ModelAdmin
 {
-    private static $managed_models = LinkMapping::class;
+    private static string $managed_models = LinkMapping::class;
 
-    private static $menu_title = 'Misdirection';
+    private static string $menu_title = 'Redirections';
 
-    private static $menu_description = 'Create, manage and test customisable link redirection mappings.';
+    private static string $menu_description = 'Create, manage and test customisable redirects.';
 
-    private static $menu_icon_class = 'font-icon-switch';
+    private static string $menu_icon_class = 'font-icon-switch';
 
-    private static $url_segment = 'misdirection';
+    private static string $url_segment = 'misdirection';
 
-    private static $allowed_actions = [
+    private static array $allowed_actions = [
         'getMappingChain'
     ];
 
     /**
      *	Update the custom summary fields to be sortable.
      */
+    #[\Override]
     public function getEditForm($ID = null, $fields = null)
     {
 
         $form = parent::getEditForm($ID, $fields);
         $gridfield = $form->Fields()->fieldByName($this->sanitiseClassName($this->modelClass));
-        $gridfield->getConfig()->getComponentByType(GridFieldSortableHeader::class)->setFieldSorting([
-            'RedirectTypeSummary' => 'RedirectType'
-        ]);
+        if ($gridfield instanceof GridField) {
+            $gridfield->getConfig()->getComponentByType(GridFieldSortableHeader::class)->setFieldSorting([
+                'RedirectTypeSummary' => 'RedirectType'
+            ]);
+        }
 
         // Allow extension customisation.
-
         $this->extend('updateMisdirectionAdminEditForm', $form);
         return $form;
     }
@@ -48,7 +51,6 @@ class MisdirectionAdmin extends ModelAdmin
      *	Retrieve the JSON link mapping recursion stack for the testing interface.
      *
      *	@URLparameter map <{TEST_URL}> string
-     *	@return JSON
      */
     public function getMappingChain()
     {
@@ -76,6 +78,7 @@ class MisdirectionAdmin extends ModelAdmin
      *
      * @return array
      */
+    #[\Override]
     public function getExportFields()
     {
         $fields = [];

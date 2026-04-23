@@ -1,30 +1,23 @@
 <?php
 
-/**
- * Created by Nivanka Fonseka (nivanka@silverstripers.com).
- * User: nivankafonseka
- * Date: 6/14/19
- * Time: 10:23 AM
- * To change this template use File | Settings | File Templates.
- */
-
 namespace nglasl\misdirection;
 
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
-use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Control\Middleware\HTTPMiddleware;
-use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\ErrorPage\ErrorPage;
 
+/**
+ * Middleware used to process requests and redirect if a match is found
+ */
 class MisDirectionRequestProcessor implements HTTPMiddleware
 {
-
     use Configurable;
     use Injectable;
 
-    private static $status_codes = [
+    private static array $status_codes = [
         301 => 'Moved Permanently',
         302 => 'Found',
         303 => 'See Other',
@@ -36,22 +29,22 @@ class MisDirectionRequestProcessor implements HTTPMiddleware
 
     public $service;
 
-    private static $dependencies = [
+    private static array $dependencies = [
         'service' => '%$' . MisdirectionService::class
     ];
 
-    private static $enforce_misdirection = true;
+    private static bool $enforce_misdirection = true;
 
-    private static $replace_default = false;
+    private static bool $replace_default = false;
 
     /**
      *	The maximum number of consecutive link mappings.
      */
-    private static $maximum_requests = 9;
+    private static int $maximum_requests = 9;
 
     public function process(HTTPRequest $request, callable $delegate)
     {
-        /* @var $response HTTPResponse */
+        /** @var \SilverStripe\Control\HTTPResponse $response */
         $response = $delegate($request);
         $requestURL = $request->getURL();
         $bypass = [
@@ -64,21 +57,18 @@ class MisDirectionRequestProcessor implements HTTPMiddleware
         foreach (Director::config()->get('rules') as $segment => $controller) {
 
             // Retrieve the specific director rules.
-
             if (($position = strpos($segment ?? '', '$')) !== false) {
                 $segment = rtrim(substr($segment ?? '', 0, $position), '/');
             }
 
             // Determine if the current request matches a specific director rule.
-
-            if ($segment && in_array($segment, $bypass) && (($requestURL === $segment) || (strpos($requestURL, "{$segment}/") === 0))) {
+            if ($segment && in_array($segment, $bypass) && (($requestURL === $segment) || (str_starts_with($requestURL, "{$segment}/")))) {
 
                 // Continue processing the response.
                 return $response;
             }
 
             if ($request->getVar('misdirected') || $request->getVar('direct')) {
-
                 // Continue processing the response.
                 return $response;
             }
@@ -86,7 +76,7 @@ class MisDirectionRequestProcessor implements HTTPMiddleware
 
         if ($response) {
 
-            $status = $response ? $response->getStatusCode() : null;
+            $status = $response->getStatusCode();
             $success = (($status >= 200) && ($status < 300));
             $error = ($status === 404);
 
@@ -102,40 +92,32 @@ class MisDirectionRequestProcessor implements HTTPMiddleware
 
                 $link = $map->getLink();
                 $base = Director::baseURL();
-                if ($replace && (substr($link, 0, strlen($base)) === $base) && (substr($link, strlen($base)) === 'home/')) {
+                if ($replace && (str_starts_with((string) $link, $base)) && (substr((string) $link, strlen($base)) === MisdirectionService::getHomeSegment())) {
                     $link = $base;
                 }
 
                 // Update the response using the link mapping redirection.
-
                 $response->setBody('');
                 $response->redirect($link, $responseCode);
             } elseif ($error && ($fallback = $this->service->determineFallback($requestURL))) {
-
                 // Update the response code where appropriate.
-
                 $responseCode = $fallback['code'];
                 if ($responseCode === 0) {
                     $responseCode = 303;
                 }
 
                 // Update the response using the fallback, enforcing no further redirection.
-
                 $response->setBody('');
                 $response->redirect($fallback['link'], $responseCode);
-            }
-
-            // When enabled, replace the default automated URL handling with a page not found.
-
-            elseif (!$error && !$success && $replace) {
+            } elseif (!$error && !$success && $replace) {
+                // When enabled, replace the default automated URL handling with a page not found.
                 $response->setStatusCode(404);
-
                 // Retrieve the appropriate page not found response.
-
-                (ClassInfo::exists(SiteTree::class) && ($page = ErrorPage::response_for(404))) ? $response->setBody($page->getBody()) : $response->setBody('No URL was matched!');
+                (class_exists(ErrorPage::class) && ($page = ErrorPage::response_for(404))) ? $response->setBody($page->getBody()) : $response->setBody('No URL was matched!');
             }
 
         }
+
         return $response;
 
     }

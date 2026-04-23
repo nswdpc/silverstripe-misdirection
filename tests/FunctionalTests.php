@@ -7,7 +7,6 @@ use nglasl\misdirection\MisDirectionRequestProcessor;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
-use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Dev\FunctionalTest;
 use SilverStripe\Security\DefaultAdminService;
@@ -20,7 +19,6 @@ use Symbiote\Multisites\Multisites;
 
 class FunctionalTests extends FunctionalTest
 {
-
     protected $usesDatabase = true;
 
     /**
@@ -33,7 +31,7 @@ class FunctionalTests extends FunctionalTest
      *	The test to ensure the request filter is functioning correctly.
      */
 
-    public function testRequestFilter()
+    public function testRequestFilter(): void
     {
 
         // Instantiate link mappings to use.
@@ -54,14 +52,17 @@ class FunctionalTests extends FunctionalTest
             ]
         )->write();
 
+        $first = null;
+        $second = null;
+
         // The CMS module needs to be present to test page behaviour.
 
-        if (ClassInfo::exists(SiteTree::class)) {
+        if (class_exists(SiteTree::class)) {
 
             // This is required to support multiple sites.
 
-            $this->logInAs(DefaultAdminService::findOrCreateDefaultAdmin());
-            $parentID = ClassInfo::exists(Multisites::class) ? Multisites::inst()->getCurrentSiteId() : 0;
+            $this->logInAs(DefaultAdminService::singleton()->findOrCreateDefaultAdmin());
+            $parentID = class_exists(Multisites::class) ? Multisites::inst()->getCurrentSiteId() : 0;
 
             // Instantiate pages to use.
 
@@ -91,7 +92,7 @@ class FunctionalTests extends FunctionalTest
 
         // The CMS module needs to be present to test page behaviour.
 
-        if (ClassInfo::exists(SiteTree::class)) {
+        if (class_exists(SiteTree::class)) {
 
             // Update the default enforce misdirection.
 
