@@ -35,7 +35,7 @@ class SiteTreeMisdirectionExtension extends Extension
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
         $page = $this->getOwner();
         $vanityMapping = $page->VanityMapping();
-        if($vanityMapping && $vanityMapping->isInDB()) {
+        if ($vanityMapping && $vanityMapping->isInDB()) {
 
             $fields->addFieldToTab(
                 'Root.Misdirection',
@@ -77,7 +77,7 @@ class SiteTreeMisdirectionExtension extends Extension
         // Retrieve the vanity mapping URL, where this is only possible using the POST variable.
         $controller = Controller::curr();
         $url = $controller ? $controller->getRequest()->postVar('VanityURL') : null;
-        if(!$url) {
+        if (!$url) {
             $url = $vanityMapping->MappedLink;
         }
 
@@ -115,7 +115,7 @@ class SiteTreeMisdirectionExtension extends Extension
         // Retrieve the vanity mapping URL, where this is only possible using the POST variable.
         $controller = Controller::curr();
         $url = $controller ? $controller->getRequest()->postVar('VanityURL') : null;
-        if(!$url) {
+        if (!$url) {
             $url = $vanityMapping->MappedLink;
         }
 
