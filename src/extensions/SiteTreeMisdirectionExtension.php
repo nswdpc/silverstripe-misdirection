@@ -19,7 +19,7 @@ use SilverStripe\ORM\ValidationResult;
  * @author Nathan Glasl <nathan@symbiote.com.au>
  * @property int $VanityMappingID
  * @method \nglasl\misdirection\LinkMapping VanityMapping()
- * @extends \SilverStripe\Core\Extension<static>
+ * @extends \SilverStripe\Core\Extension<(\SilverStripe\CMS\Model\SiteTree & static)>
  */
 class SiteTreeMisdirectionExtension extends Extension
 {
@@ -67,7 +67,7 @@ class SiteTreeMisdirectionExtension extends Extension
         $page->extend('updateSiteTreeMisdirectionExtensionSettingsFields', $fields);
     }
 
-    public function validate(ValidationResult $result)
+    public function validate(ValidationResult $result): ValidationResult
     {
 
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
@@ -118,6 +118,7 @@ class SiteTreeMisdirectionExtension extends Extension
         if(!$url) {
             $url = $vanityMapping->MappedLink;
         }
+
         $mappingExists = $vanityMapping->isInDB();
 
         // Determine whether the vanity mapping URL has been updated.
@@ -209,9 +210,6 @@ class SiteTreeMisdirectionExtension extends Extension
 
     /**
      *	Purge any link mappings that point back to the same page.
-     *
-     *	@param string $pageLink
-     *	@param int $pageID
      */
     public function regulateMappings(string $pageLink, int $pageID)
     {
@@ -225,11 +223,7 @@ class SiteTreeMisdirectionExtension extends Extension
 
     /**
      *	Recursively create link mappings for any children.
-     *
-     *	@param string $baseURL
-     *	@param ArrayList $children
      */
-
     public function recursiveMapping(string $baseURL, ArrayList $children)
     {
 

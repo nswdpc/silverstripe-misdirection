@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace nglasl\misdirection;
 
 use SilverStripe\Forms\GridField\GridField_HTMLProvider;

@@ -106,6 +106,7 @@ class MisDirectionRequestProcessor implements HTTPMiddleware
                 if ($responseCode === 0) {
                     $responseCode = 303;
                 }
+
                 // Update the response using the fallback, enforcing no further redirection.
                 $response->setBody('');
                 $response->redirect($fallback['link'], $responseCode);

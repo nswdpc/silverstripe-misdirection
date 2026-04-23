@@ -340,7 +340,7 @@ class LinkMapping extends DataObject
                 // This is to support multiple sites, where the absolute page URLs are treated as relative.
                 return MisdirectionService::is_external_URL($link) ? ltrim((string) $link, '/') : $link;
             }
-        } elseif ($link = (($this->LinkType === 'Regular Expression') && $this->matchedURL) ? preg_replace("%{$this->MappedLink}%i", $this->RedirectLink, $this->matchedURL) : $this->RedirectLink) {
+        } elseif ($link = (($this->LinkType === 'Regular Expression') && $this->matchedURL) ? preg_replace("%{$this->MappedLink}%i", (string) $this->RedirectLink, $this->matchedURL) : $this->RedirectLink) {
             // Apply the regular expression pattern replacement.
             // When appropriate, prepend the base URL to match a page redirection.
             $prepended = Controller::join_links(Director::baseURL(), $link);
@@ -371,7 +371,7 @@ class LinkMapping extends DataObject
                 // Determine whether a redirection hostname exists.
                 return MisdirectionService::is_external_URL($link) ? parse_url((string) $link, PHP_URL_HOST) : null;
             }
-        } elseif ($link = (($this->LinkType === 'Regular Expression') && $this->matchedURL) ? preg_replace("%{$this->MappedLink}%i", $this->RedirectLink, $this->matchedURL) : $this->RedirectLink) {
+        } elseif ($link = (($this->LinkType === 'Regular Expression') && $this->matchedURL) ? preg_replace("%{$this->MappedLink}%i", (string) $this->RedirectLink, $this->matchedURL) : $this->RedirectLink) {
             // Apply the regular expression pattern replacement.
             // Determine whether a redirection hostname exists.
             return MisdirectionService::is_external_URL($link) ? parse_url($link, PHP_URL_HOST) : null;

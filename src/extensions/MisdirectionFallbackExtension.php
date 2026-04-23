@@ -18,7 +18,7 @@ use SilverStripe\View\Requirements;
  * @property ?string $Fallback
  * @property ?string $FallbackLink
  * @property int $FallbackResponseCode
- * @extends \SilverStripe\Core\Extension<static>
+ * @extends \SilverStripe\Core\Extension<((\SilverStripe\CMS\Model\SiteTree & static) | (\SilverStripe\SiteConfig\SiteConfig & static))>
  */
 class MisdirectionFallbackExtension extends Extension
 {
@@ -42,6 +42,7 @@ class MisdirectionFallbackExtension extends Extension
         if (class_exists(SiteConfig::class) && $owner instanceof SiteConfig) {
             return $owner->updateFields($fields);
         }
+
         return null;
     }
 
