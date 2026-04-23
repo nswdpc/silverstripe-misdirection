@@ -112,6 +112,7 @@ class MisdirectionService
         if($idPriority !== "ASC") {
             $idPriority = "DESC";
         }
+
         // Make sure the link mappings are ordered by priority and specificity.
         $matches = $matches->sort([
             'Priority' => 'DESC',
