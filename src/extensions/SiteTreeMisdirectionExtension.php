@@ -9,9 +9,9 @@ use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\HeaderField;
 use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Core\Extension;
-use SilverStripe\ORM\ValidationResult;
+use SilverStripe\Core\Validation\ValidationResult;
 
 /**
  * This extension provides vanity mapping directly from a page, and automatically creates the appropriate link mappings when replacing the default automated URL handling.
@@ -67,7 +67,7 @@ class SiteTreeMisdirectionExtension extends Extension
         $page->extend('updateSiteTreeMisdirectionExtensionSettingsFields', $fields);
     }
 
-    public function validate(ValidationResult $result): ValidationResult
+    public function updateValidate(ValidationResult &$result)
     {
 
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
@@ -81,25 +81,24 @@ class SiteTreeMisdirectionExtension extends Extension
             $url = $vanityMapping->MappedLink;
         }
 
-        if (!$url) {
-            return $result;
+        if ($url) {
+
+            // Determine whether another vanity mapping already exists.
+            $existing = LinkMapping::get()->filter([
+                'MappedLink' => $url,
+                'RedirectType' => 'Page',
+                'RedirectPageID:not' => [ 0, $page->ID ]
+            ])->first();
+
+            if (class_exists(SiteTree::class) && class_exists(CMSPageSettingsController::class) && $result->isValid() && $existing && ($page = $existing->getRedirectPage())) {
+                $link = Controller::join_links(CMSPageSettingsController::singleton()->Link('show'), $page->ID);
+                $result->addError("Vanity URL {$link}' already exists", ValidationResult::TYPE_ERROR);
+            }
+
+            // Allow extension.
+            $page->extend('validateSiteTreeMisdirectionExtension', $result);
+
         }
-
-        // Determine whether another vanity mapping already exists.
-        $existing = LinkMapping::get()->filter([
-            'MappedLink' => $url,
-            'RedirectType' => 'Page',
-            'RedirectPageID:not' => [ 0, $page->ID ]
-        ])->first();
-
-        if (class_exists(SiteTree::class) && class_exists(CMSPageSettingsController::class) && $result->isValid() && $existing && ($page = $existing->getRedirectPage())) {
-            $link = Controller::join_links(CMSPageSettingsController::singleton()->Link('show'), $page->ID);
-            $result->addError("Vanity URL {$link}' already exists", ValidationResult::TYPE_ERROR);
-        }
-
-        // Allow extension.
-        $page->extend('validateSiteTreeMisdirectionExtension', $result);
-        return $result;
     }
 
     /**

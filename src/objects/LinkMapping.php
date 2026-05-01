@@ -7,6 +7,7 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTP;
+use SilverStripe\Core\Validation\ValidationResult;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CompositeField;
@@ -319,7 +320,7 @@ class LinkMapping extends DataObject
     }
 
     #[\Override]
-    public function validate()
+    public function validate(): ValidationResult
     {
         $result = parent::validate();
         // Determine whether a regular expression mapping is possible to match against.
