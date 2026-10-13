@@ -376,12 +376,12 @@ class LinkMapping extends DataObject
             $prepended = Controller::join_links(Director::baseURL(), $link);
             if (MisdirectionService::is_external_URL($link)) {
                 return class_exists(Multisites::class) ? HTTP::setGetVar('misdirected', '1', $link) : $link;
-            } elseif (MisdirectionService::is_external_URL($prepended)) {
+            }
+            if (MisdirectionService::is_external_URL($prepended)) {
                 // This is needed, otherwise infinitely recursive mappings won't be detected in advance.
                 return $link;
-            } else {
-                return $prepended;
             }
+            return $prepended;
         }
 
         // No redirection URL has been found.

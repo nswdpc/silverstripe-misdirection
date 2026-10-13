@@ -155,10 +155,10 @@ class SiteTreeMisdirectionExtension extends Extension
                 if (!str_starts_with((string) $url, 'new-')) {
                     // Determine the page URL.
                     $parentID = ($changed['ParentID']['before'] ?? $page->ParentID);
-                    $parent = SiteTree::get_one(SiteTree::class, "SiteTree.ID = {$parentID}");
+                    $parent = \SilverStripe\CMS\Model\SiteTree::get()->setUseCache(true)->filter("SiteTree.ID = {$parentID}")->first();
                     while ($parent) {
                         $url = Controller::join_links($parent->URLSegment, $url);
-                        $parent = SiteTree::get_one(SiteTree::class, "SiteTree.ID = {$parent->ParentID}");
+                        $parent = \SilverStripe\CMS\Model\SiteTree::get()->setUseCache(true)->filter("SiteTree.ID = {$parent->ParentID}")->first();
                     }
 
                     // Instantiate a link mapping for this page.
