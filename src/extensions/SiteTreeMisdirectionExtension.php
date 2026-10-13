@@ -30,6 +30,11 @@ class SiteTreeMisdirectionExtension extends Extension
         'VanityMapping' => LinkMapping::class
     ];
 
+    public function updateCmsFields($fields)
+    {
+        $fields->removeByName(['VanityMappingID']);
+    }
+
     public function updateSettingsFields($fields)
     {
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
