@@ -7,7 +7,7 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Config;
-use SilverStripe\Forms\HeaderField;
+use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Core\Extension;
@@ -34,34 +34,29 @@ class SiteTreeMisdirectionExtension extends Extension
     {
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
         $page = $this->getOwner();
+
+        // Current VanityMapping record
         $vanityMapping = $page->VanityMapping();
-        if ($vanityMapping && $vanityMapping->isInDB()) {
 
-            $fields->addFieldToTab(
-                'Root.Misdirection',
-                HeaderField::create(
-                    'VanityHeader',
-                    'Vanity'
-                )
-            );
-
-            if (($page instanceof SiteTree) && $vanityMapping->RedirectPageID != $page->ID) {
-                // The mapping may have been pointed to another page.
-                $page->VanityMappingID = 0;
-            }
-
-            $fields->addFieldToTab(
-                'Root.Misdirection',
-                TextField::create(
-                    'VanityURL',
-                    'URL',
-                    $vanityMapping->MappedLink
-                )->setDescription(
-                    'Mappings with higher priority will take precedence over this'
-                )
-            );
-
+        if (($page instanceof SiteTree) && $vanityMapping && $vanityMapping->isInDB() && $vanityMapping->RedirectPageID != $page->ID) {
+            // The mapping may have been pointed to another page.
+            $page->VanityMappingID = 0;
+            $vanityMapping = null;
         }
+
+        // set up fields
+        $holderField = CompositeField::create([])->setTitle('Vanity address');
+        $holderField->push(
+            TextField::create(
+                'VanityURL',
+                'Enter a path value this page can be accessed on in addition to its normal URL',
+                (($vanityMapping instanceof LinkMapping) ? $vanityMapping->MappedLink : '')
+            )->setDescription(
+                'You can use the value entered here as an optional short link for this page'
+            )
+        );
+
+        $fields->addFieldToTab('Root.Redirection', $holderField);
 
         // Allow extension customisation.
         $page->extend('updateSiteTreeMisdirectionExtensionSettingsFields', $fields);
