@@ -6,7 +6,7 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\HeaderField;
+use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Core\Extension;
 use SilverStripe\SiteConfig\SiteConfig;
@@ -37,10 +37,11 @@ class MisdirectionFallbackExtension extends Extension
      */
     public function updateCMSFields(FieldList $fields)
     {
+        $fields->removeByName(['Fallback','FallbackLink','FallbackResponseCode']);
         /** @var \SilverStripe\SiteConfig\SiteConfig|\SilverStripe\CMS\Model\SiteTree $owner */
         $owner = $this->getOwner();
         if (class_exists(SiteConfig::class) && $owner instanceof SiteConfig) {
-            return $owner->updateFields($fields);
+            return $this->updateMisdirectionFields($fields);
         }
 
         return null;
@@ -48,25 +49,26 @@ class MisdirectionFallbackExtension extends Extension
 
     public function updateSettingsFields($fields)
     {
+        $fields->removeByName(['Fallback','FallbackLink','FallbackResponseCode']);
         // This extension only exists for SiteTree.
         /** @var \SilverStripe\SiteConfig\SiteConfig|\SilverStripe\CMS\Model\SiteTree $owner */
         $owner = $this->getOwner();
         if (class_exists(SiteTree::class) && $owner instanceof SiteTree) {
-            return $owner->updateFields($fields);
+            return $this->updateMisdirectionFields($fields);
         }
     }
 
-    public function updateFields($fields)
+    protected function updateMisdirectionFields($fields)
     {
 
         Requirements::javascript('nglasl/silverstripe-misdirection: client/javascript/misdirection-fallback.js');
 
         // Update any fields that are displayed when not viewing a page.
-        $tab = 'Root.Misdirection';
+        $tab = 'Root.Redirection';
         $options = [
-            'Nearest' => 'Nearest Parent',
-            'This' => 'This Page',
-            'URL' => 'URL'
+            'Nearest' => 'Nearest parent page',
+            'This' => 'This page',
+            'URL' => 'A website address'
         ];
 
         /** @var \SilverStripe\SiteConfig\SiteConfig|\SilverStripe\CMS\Model\SiteTree $owner */
@@ -76,31 +78,23 @@ class MisdirectionFallbackExtension extends Extension
             unset($options['This']);
         }
 
+        $holderField = CompositeField::create([])->setTitle('Child path fallback handling');
         // Retrieve the fallback mapping selection.
-        $fields->addFieldToTab(
-            $tab,
-            HeaderField::create(
-                'FallbackHeader',
-                'Fallback'
-            )
-        );
-        $fields->addFieldToTab(
-            $tab,
+        $holderField->push(
             DropdownField::create(
                 'Fallback',
                 'To',
                 $options
             )->addExtraClass('fallback')
             ->setHasEmptyDefault(true)
-            ->setDescription('This will be used when children result in a <strong>page not found</strong>')
+            ->setDescription('This target is used when a request to a child page of this page results in a 404: Page Not Found')
         );
-        $fields->addFieldToTab(
-            $tab,
+        $holderField->push(
             TextField::create(
                 'FallbackLink',
                 'URL'
             )->addExtraClass('fallback-link')
-            ->setDescription('This requires the <strong>HTTP/S</strong> scheme for an external URL')
+            ->setDescription('<strong>HTTP/S</strong> prefix is required for an external URL')
         );
 
         // Retrieve the response code selection.
@@ -113,17 +107,19 @@ class MisdirectionFallbackExtension extends Extension
         }
 
         if (!$owner->FallbackResponseCode) {
-            $owner->FallbackResponseCode = 303;
+            $owner->FallbackResponseCode = 301;
         }
 
-        $fields->addFieldToTab(
-            $tab,
+        $holderField->push(
             DropdownField::create(
                 'FallbackResponseCode',
-                'Response Code',
+                'Response code',
                 $selection
             )->addExtraClass('fallback-response-code')
+            ->setDescription('This field instructs a web browser or robot how to handle the redirect. If unsure, choose 301.')
         );
+
+        $fields->addFieldToTab($tab, $holderField);
 
         // Allow extension customisation.
         $owner->extend('updateMisdirectionFallbackExtensionFields', $fields);

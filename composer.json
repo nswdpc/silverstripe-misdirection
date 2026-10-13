@@ -22,12 +22,12 @@
         }
     ],
     "require": {
-        "codem/silverstripe-html5-inputs": "^1",
-        "silverstripe/framework": "^5.4",
-        "silverstripe/admin": "^2"
+        "codem/silverstripe-html5-inputs": "^2",
+        "silverstripe/framework": "^6",
+        "silverstripe/admin": "^3"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.5",
+        "phpunit/phpunit": "^11.5",
         "friendsofphp/php-cs-fixer": "^3",
         "cambis/silverstripe-rector": "^2",
         "cambis/silverstan": "^2",
@@ -35,12 +35,12 @@
         "phpstan/phpstan": "^2",
         "phpstan/phpstan-phpunit": "^2",
         "rector/rector": "^2",
-        "silverstripe/cms": "^5.4"
+        "silverstripe/cms": "^6"
     },
     "scripts": {
         "phpstan-analyse": "./vendor/bin/phpstan analyse --ansi --no-progress --no-interaction --configuration vendor/nswdpc/ci-files/phpstan/.phpstan.silverstripe.neon src/ tests/",
-        "rector-dryrun": "./vendor/bin/rector process --dry-run --ansi --config vendor/nswdpc/ci-files/rector/.rector.silverstripe_53_83.php src/ tests/",
-        "rector-process": "./vendor/bin/rector process --no-diffs --ansi --config vendor/nswdpc/ci-files/rector/.rector.silverstripe_53_83.php src/ tests/",
+        "rector-dryrun": "./vendor/bin/rector process --dry-run --ansi --config vendor/nswdpc/ci-files/rector/.rector.silverstripe_6_83.php src/ tests/",
+        "rector-process": "./vendor/bin/rector process --no-diffs --ansi --config vendor/nswdpc/ci-files/rector/.rector.silverstripe_6_83.php src/ tests/",
         "phpcsfixer-fix": "./vendor/bin/php-cs-fixer fix --ansi --no-interaction --config vendor/nswdpc/ci-files/php-cs-fixer/.php-cs-fixer.php src/ tests/"
     },
     "autoload": {
@@ -68,5 +68,7 @@
             "silverstripe/recipe-plugin": true,
             "phpstan/extension-installer": true
         }
-    }
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
 }

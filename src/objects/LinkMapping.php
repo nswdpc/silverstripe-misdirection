@@ -7,6 +7,7 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTP;
+use SilverStripe\Core\Validation\ValidationResult;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CompositeField;
@@ -319,7 +320,7 @@ class LinkMapping extends DataObject
     }
 
     #[\Override]
-    public function validate()
+    public function validate(): ValidationResult
     {
         $result = parent::validate();
         // Determine whether a regular expression mapping is possible to match against.
@@ -375,12 +376,14 @@ class LinkMapping extends DataObject
             $prepended = Controller::join_links(Director::baseURL(), $link);
             if (MisdirectionService::is_external_URL($link)) {
                 return class_exists(Multisites::class) ? HTTP::setGetVar('misdirected', '1', $link) : $link;
-            } elseif (MisdirectionService::is_external_URL($prepended)) {
+            }
+
+            if (MisdirectionService::is_external_URL($prepended)) {
                 // This is needed, otherwise infinitely recursive mappings won't be detected in advance.
                 return $link;
-            } else {
-                return $prepended;
             }
+
+            return $prepended;
         }
 
         // No redirection URL has been found.

@@ -9,7 +9,7 @@ use SilverStripe\Control\HTTP;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Convert;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\SiteConfig\SiteConfig;
 use Symbiote\Multisites\Multisites;
 
@@ -81,7 +81,7 @@ class MisdirectionService
         $matches = LinkMapping::get();
 
         // Enforce any hostname restriction that may have been defined.
-        if (is_null($host) && Controller::has_curr() && ($controller = Controller::curr())) {
+        if (is_null($host) && ($controller = Controller::curr())) {
             $host = $controller->getRequest()->getHeader('Host');
         }
 
@@ -232,7 +232,7 @@ class MisdirectionService
 
             // Retrieve the default site configuration fallback.
             $config = SiteConfig::current_site_config();
-            if ($config && $config->Fallback) {
+            if ($config->Fallback) {
                 $applicableRule = $config->Fallback;
                 $nearestParent = Director::baseURL();
                 $thisPage = $nearestParent;

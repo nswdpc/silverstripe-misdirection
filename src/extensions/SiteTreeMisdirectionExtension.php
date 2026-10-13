@@ -7,11 +7,11 @@ use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Config\Config;
-use SilverStripe\Forms\HeaderField;
+use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Core\Extension;
-use SilverStripe\ORM\ValidationResult;
+use SilverStripe\Core\Validation\ValidationResult;
 
 /**
  * This extension provides vanity mapping directly from a page, and automatically creates the appropriate link mappings when replacing the default automated URL handling.
@@ -30,44 +30,44 @@ class SiteTreeMisdirectionExtension extends Extension
         'VanityMapping' => LinkMapping::class
     ];
 
+    public function updateCmsFields($fields)
+    {
+        $fields->removeByName(['VanityMappingID']);
+    }
+
     public function updateSettingsFields($fields)
     {
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
         $page = $this->getOwner();
+
+        // Current VanityMapping record
         $vanityMapping = $page->VanityMapping();
-        if ($vanityMapping && $vanityMapping->isInDB()) {
 
-            $fields->addFieldToTab(
-                'Root.Misdirection',
-                HeaderField::create(
-                    'VanityHeader',
-                    'Vanity'
-                )
-            );
-
-            if (($page instanceof SiteTree) && $vanityMapping->RedirectPageID != $page->ID) {
-                // The mapping may have been pointed to another page.
-                $page->VanityMappingID = 0;
-            }
-
-            $fields->addFieldToTab(
-                'Root.Misdirection',
-                TextField::create(
-                    'VanityURL',
-                    'URL',
-                    $vanityMapping->MappedLink
-                )->setDescription(
-                    'Mappings with higher priority will take precedence over this'
-                )
-            );
-
+        if (($page instanceof SiteTree) && $vanityMapping && $vanityMapping->isInDB() && $vanityMapping->RedirectPageID != $page->ID) {
+            // The mapping may have been pointed to another page.
+            $page->VanityMappingID = 0;
+            $vanityMapping = null;
         }
+
+        // set up fields
+        $holderField = CompositeField::create([])->setTitle('Vanity address');
+        $holderField->push(
+            TextField::create(
+                'VanityURL',
+                'Enter a path value this page can be accessed on in addition to its normal URL',
+                (($vanityMapping instanceof LinkMapping) ? $vanityMapping->MappedLink : '')
+            )->setDescription(
+                'You can use the value entered here as an optional short link for this page'
+            )
+        );
+
+        $fields->addFieldToTab('Root.Redirection', $holderField);
 
         // Allow extension customisation.
         $page->extend('updateSiteTreeMisdirectionExtensionSettingsFields', $fields);
     }
 
-    public function validate(ValidationResult $result): ValidationResult
+    public function updateValidate(ValidationResult &$result)
     {
 
         /** @var \SilverStripe\CMS\Model\SiteTree $page */
@@ -81,25 +81,24 @@ class SiteTreeMisdirectionExtension extends Extension
             $url = $vanityMapping->MappedLink;
         }
 
-        if (!$url) {
-            return $result;
+        if ($url) {
+
+            // Determine whether another vanity mapping already exists.
+            $existing = LinkMapping::get()->filter([
+                'MappedLink' => $url,
+                'RedirectType' => 'Page',
+                'RedirectPageID:not' => [ 0, $page->ID ]
+            ])->first();
+
+            if (class_exists(SiteTree::class) && class_exists(CMSPageSettingsController::class) && $result->isValid() && $existing && ($page = $existing->getRedirectPage())) {
+                $link = Controller::join_links(CMSPageSettingsController::singleton()->Link('show'), $page->ID);
+                $result->addError("Vanity URL {$link}' already exists", ValidationResult::TYPE_ERROR);
+            }
+
+            // Allow extension.
+            $page->extend('validateSiteTreeMisdirectionExtension', $result);
+
         }
-
-        // Determine whether another vanity mapping already exists.
-        $existing = LinkMapping::get()->filter([
-            'MappedLink' => $url,
-            'RedirectType' => 'Page',
-            'RedirectPageID:not' => [ 0, $page->ID ]
-        ])->first();
-
-        if (class_exists(SiteTree::class) && class_exists(CMSPageSettingsController::class) && $result->isValid() && $existing && ($page = $existing->getRedirectPage())) {
-            $link = Controller::join_links(CMSPageSettingsController::singleton()->Link('show'), $page->ID);
-            $result->addError("Vanity URL {$link}' already exists", ValidationResult::TYPE_ERROR);
-        }
-
-        // Allow extension.
-        $page->extend('validateSiteTreeMisdirectionExtension', $result);
-        return $result;
     }
 
     /**
@@ -161,10 +160,10 @@ class SiteTreeMisdirectionExtension extends Extension
                 if (!str_starts_with((string) $url, 'new-')) {
                     // Determine the page URL.
                     $parentID = ($changed['ParentID']['before'] ?? $page->ParentID);
-                    $parent = SiteTree::get_one(SiteTree::class, "SiteTree.ID = {$parentID}");
+                    $parent = \SilverStripe\CMS\Model\SiteTree::get()->setUseCache(true)->filter("SiteTree.ID = {$parentID}")->first();
                     while ($parent) {
                         $url = Controller::join_links($parent->URLSegment, $url);
-                        $parent = SiteTree::get_one(SiteTree::class, "SiteTree.ID = {$parent->ParentID}");
+                        $parent = \SilverStripe\CMS\Model\SiteTree::get()->setUseCache(true)->filter("SiteTree.ID = {$parent->ParentID}")->first();
                     }
 
                     // Instantiate a link mapping for this page.
