@@ -68,6 +68,7 @@ class MisdirectionAdmin extends ModelAdmin
             // JSON_PRETTY_PRINT.
             return json_encode($mappings, 128);
         }
+
         return $this->httpError(404);
     }
 

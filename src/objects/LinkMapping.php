@@ -377,10 +377,12 @@ class LinkMapping extends DataObject
             if (MisdirectionService::is_external_URL($link)) {
                 return class_exists(Multisites::class) ? HTTP::setGetVar('misdirected', '1', $link) : $link;
             }
+
             if (MisdirectionService::is_external_URL($prepended)) {
                 // This is needed, otherwise infinitely recursive mappings won't be detected in advance.
                 return $link;
             }
+
             return $prepended;
         }
 
